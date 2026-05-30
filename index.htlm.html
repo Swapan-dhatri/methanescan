@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MethaneScan — LDAR Priority Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0e1117;--ink2:#3a3f4a;--ink3:#6b7280;
+  --bg:#f7f8fa;--surface:#fff;--border:#e2e5ea;--border2:#c8cdd5;
+  --accent:#0f4c81;--accent-light:#e8f0fb;
+  --red:#b91c1c;--red-bg:#fef2f2;--red-bd:#fca5a5;
+  --amb:#92400e;--amb-bg:#fffbeb;--amb-bd:#fcd34d;
+  --blu:#1e40af;--blu-bg:#eff6ff;--blu-bd:#93c5fd;
+  --grn:#14532d;--grn-bg:#f0fdf4;--grn-bd:#86efac;
+  --teal:#0f766e;--teal-bg:#f0fdfa;--teal-bd:#5eead4;
+  --gray:#374151;--gray-bg:#f9fafb;--gray-bd:#d1d5db;
+  --r:6px;--r2:10px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--ink);color:#fff;padding:0 28px;display:flex;align-items:center;height:54px;position:sticky;top:0;z-index:100}
+.logo{font-family:var(--mono);font-size:17px;font-weight:500;display:flex;align-items:center;gap:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:#22c55e;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+.oss{font-size:10px;font-family:var(--mono);border:1px solid rgba(255,255,255,.2);padding:2px 8px;border-radius:20px;color:rgba(255,255,255,.5);margin-left:8px}
+.htag{margin-left:auto;font-size:12px;color:rgba(255,255,255,.38);font-family:var(--mono)}
+
+/* ── LAYOUT ── */
+.main{max-width:900px;margin:0 auto;padding:36px 22px}
+.page{display:none}.page.show{display:block}
+
+/* ── STEPS ── */
+.steps{display:flex;align-items:center;margin-bottom:36px}
+.stp{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--ink3)}
+.stp.done .sn{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stp.active .sn{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stp.active{color:var(--ink);font-weight:500}
+.sn{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.sl{flex:1;height:1px;background:var(--border);margin:0 4px}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:30px}
+.card+.card,.card+.tp{margin-top:18px}
+.card-t{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px}
+.card-s{font-size:13px;color:var(--ink3);line-height:1.5}
+
+/* ── FORMS ── */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--ink2);margin-bottom:5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
+.field input{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r);font-family:var(--font);font-size:14px;color:var(--ink);background:var(--surface);outline:none;transition:border-color .15s,box-shadow .15s}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,76,129,.1)}
+
+/* ── TRANSPARENCY PANEL ── */
+.tp{background:#f0fdfa;border:1px solid #5eead4;border-radius:var(--r2);overflow:hidden}
+.tp-hdr{background:#ccfbf1;border-bottom:1px solid #5eead4;padding:12px 18px;display:flex;align-items:center;gap:10px}
+.tp-hdr h3{font-size:14px;font-weight:700;color:var(--teal)}
+.tp-hdr-sub{font-size:12px;color:var(--teal);opacity:.7;margin-left:auto;font-family:var(--mono)}
+.tp-body{padding:16px 18px}
+.tp-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.tp-col h4{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #99f6e4;color:var(--teal)}
+.tp-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;font-size:12.5px;line-height:1.5}
+.td{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.td-y{background:var(--teal)}.td-n{background:#d1d5db}
+.tp-note{font-size:12px;color:var(--teal);background:#ccfbf1;border-radius:var(--r);padding:9px 13px;line-height:1.6}
+
+/* ── CONSENT ── */
+.c-area{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+.c-row{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);cursor:pointer}
+.c-row input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;cursor:pointer}
+.c-row span{font-size:13px;color:var(--ink2);line-height:1.5}
+.c-row strong{color:var(--ink)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border-radius:var(--r);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap}
+.btn-p{background:var(--ink);color:#fff;border-color:var(--ink)}.btn-p:hover{background:#1e2533}
+.btn-p:disabled{background:var(--ink3);cursor:not-allowed;border-color:var(--ink3)}
+.btn-o{background:transparent;color:var(--ink);border-color:var(--border2)}.btn-o:hover{background:var(--bg)}
+.btn-d{background:var(--red);color:#fff;border-color:var(--red)}.btn-d:hover{background:#991b1b}
+.btn-row{display:flex;gap:10px;margin-top:24px;align-items:center;flex-wrap:wrap}
+
+/* ── ALERTS ── */
+.al{border-radius:var(--r);padding:11px 14px;font-size:13px;line-height:1.5;margin-top:10px}
+.al-e{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)}
+.al-i{background:var(--blu-bg);border:1px solid var(--blu-bd);color:var(--blu)}
+
+/* ── DIAGNOSTICS ── */
+.diag{background:#fffbf0;border:1px solid #fde68a;border-radius:var(--r);padding:12px 14px;margin-top:10px;font-size:12px;font-family:var(--mono);color:#78350f;line-height:1.8;display:none}
+.diag-line{display:flex;gap:8px;align-items:center}
+.diag-ok{color:#16a34a}.diag-wait{color:#92400e}.diag-err{color:#b91c1c}
+
+/* ── UPLOAD ── */
+.up-area{border:2px dashed var(--border2);border-radius:var(--r2);padding:44px 28px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-top:22px;position:relative}
+.up-area:hover,.up-area.drag{border-color:var(--accent);background:var(--accent-light)}
+.up-area h3{font-size:15px;font-weight:500;margin-bottom:5px}
+.up-area p{font-size:13px;color:var(--ink3)}
+#fileInput{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fa{display:flex;align-items:center;gap:11px;background:var(--grn-bg);border:1px solid var(--grn-bd);border-radius:var(--r);padding:11px 14px;margin-top:10px}
+.fa-name{font-family:var(--mono);font-size:13px;color:var(--grn)}
+.fa-size{font-size:12px;color:var(--ink3);margin-left:auto}
+.pnote{font-size:12px;color:var(--ink3);background:var(--gray-bg);border:1px solid var(--gray-bd);border-radius:var(--r);padding:9px 13px;margin-top:14px;display:flex;gap:7px;align-items:flex-start;line-height:1.5}
+
+/* ── PROGRESS ── */
+.prog{margin-top:18px;display:none}
+.pbo{background:var(--border);border-radius:4px;height:6px;overflow:hidden}
+.pbi{background:var(--accent);height:100%;border-radius:4px;transition:width .3s;width:0%}
+.plbl{font-size:12px;font-family:var(--mono);color:var(--ink3);margin-top:6px}
+
+/* ── TELEMETRY BADGE ── */
+.tb{display:none;align-items:center;gap:6px;font-size:12px;font-family:var(--mono);padding:4px 11px;border-radius:20px;border:1px solid}
+.tb-ok{background:var(--teal-bg);border-color:var(--teal-bd);color:var(--teal)}
+.tb-sk{background:var(--gray-bg);border-color:var(--gray-bd);color:var(--gray)}
+.tdot{width:6px;height:6px;border-radius:50%}
+
+/* ── REPORT ── */
+.rpt-hdr{background:var(--ink);color:#fff;border-radius:var(--r2) var(--r2) 0 0;padding:26px 30px}
+.rpt-hdr h1{font-size:21px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+.rpt-meta{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap}
+.rmi{font-size:12px;font-family:var(--mono)}
+.rmi span{color:rgba(255,255,255,.38);display:block;margin-bottom:1px}
+.rmi strong{color:#fff}
+.sg{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:18px 0}
+.sc{border-radius:var(--r);padding:13px 14px;border:1px solid}
+.sc .n{font-size:22px;font-weight:700;font-family:var(--mono);line-height:1}
+.sc .l{font-size:10px;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;opacity:.7}
+.ts{margin-top:18px}
+.th2{display:flex;align-items:center;gap:10px;padding:13px 18px;border-radius:var(--r) var(--r) 0 0;border:1px solid;border-bottom:none}
+.th2 h2{font-size:14px;font-weight:700}
+.tc2{font-family:var(--mono);font-size:11px;margin-left:auto;opacity:.65}
+.ti{padding:13px 18px;font-size:12.5px;line-height:1.65;border-left:1px solid;border-right:1px solid}
+.tt{width:100%;border-collapse:collapse;font-size:12px;border:1px solid;border-top:none}
+.tt th{font-size:10px;font-weight:500;padding:7px 10px;text-align:left;border-bottom:1px solid;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px;background:rgba(0,0,0,.03)}
+.tt td{padding:6px 10px;border-bottom:1px solid rgba(0,0,0,.05);vertical-align:top}
+.tt tr:last-child td{border-bottom:none}
+.sp{font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.vh .th2{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.vh .ti{background:#fff8f8;border-color:var(--red-bd);color:#7f1d1d}
+.vh .tt{border-color:var(--red-bd)}
+.vh .sp{background:var(--red-bg);color:var(--red)}
+.hi .th2{background:var(--amb-bg);border-color:var(--amb-bd);color:var(--amb)}
+.hi .ti{background:#fffef5;border-color:var(--amb-bd);color:#78350f}
+.hi .tt{border-color:var(--amb-bd)}
+.hi .sp{background:var(--amb-bg);color:var(--amb)}
+.md .th2{background:var(--blu-bg);border-color:var(--blu-bd);color:var(--blu)}
+.md .ti{background:#f8fbff;border-color:var(--blu-bd);color:#1e3a8a}
+.md .tt{border-color:var(--blu-bd)}
+.md .sp{background:var(--blu-bg);color:var(--blu)}
+.lo .th2{background:var(--grn-bg);border-color:var(--grn-bd);color:var(--grn)}
+.lo .ti{background:#f8fff9;border-color:var(--grn-bd);color:#14532d}
+.lo .tt{border-color:var(--grn-bd)}
+.lo .sp{background:var(--grn-bg);color:var(--grn)}
+.oos-s{margin-top:18px}
+.oos-h{background:var(--gray-bg);border:1px solid var(--gray-bd);border-radius:var(--r) var(--r) 0 0;padding:13px 18px;display:flex;align-items:center;gap:10px}
+.oos-h h2{font-size:14px;font-weight:700;color:var(--gray)}
+.oos-b{background:#fff;border:1px solid var(--gray-bd);border-top:none;border-radius:0 0 var(--r) var(--r);padding:14px 18px}
+.oos-ins{font-size:13px;color:var(--ink2);line-height:1.65;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.oos-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+.oos-grp{background:var(--gray-bg);border:1px solid var(--gray-bd);border-radius:var(--r);padding:9px 11px}
+.oos-gt{font-size:10px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-family:var(--mono)}
+.oos-tags{display:flex;flex-wrap:wrap;gap:3px}
+.oos-tag{font-family:var(--mono);font-size:10px;background:#fff;border:1px solid var(--gray-bd);border-radius:3px;padding:1px 5px;color:var(--gray)}
+.cw{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:18px}
+.cleg{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:12px}
+.ld{width:10px;height:10px;border-radius:2px;display:inline-block}
+.mb-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-top:18px;font-size:13px;color:var(--ink2);line-height:1.7}
+.mb-box h4{font-size:13px;font-weight:600;margin-bottom:7px;color:var(--ink)}
+.rpt-foot{margin-top:24px;padding:16px 0;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.rpt-acts{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap}
+
+/* ── SCRAMBLE ── */
+.scr-ov{position:fixed;inset:0;background:rgba(14,17,23,.96);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#fff;text-align:center}
+.scr-ov.show{display:flex}
+.scr-an{font-family:var(--mono);font-size:30px;letter-spacing:4px;animation:sa .3s infinite}
+@keyframes sa{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
+
+@media(max-width:600px){.fg{grid-template-columns:1fr}.sg{grid-template-columns:1fr 1fr}.tp-cols{grid-template-columns:1fr}.main{padding:20px 12px}}
+@media print{.hdr,.steps,.rpt-acts,.btn,.no-print,.tb{display:none!important}body{background:#fff}.main{padding:0;max-width:100%}.card{border:none;padding:0}.rpt-hdr,.th2,.ti,.sc{-webkit-print-color-adjust:exact;print-color-adjust:exact}.ts,.cw{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo"><span class="dot"></span>MethaneScan</div>
+  <span class="oss">Open Source · MIT</span>
+  <span class="htag">LDAR Priority Tool</span>
+</div>
+
+<div class="main">
+
+  <div class="steps no-print" id="stepBar">
+    <div class="stp active" id="step1"><div class="sn">1</div>Register</div>
+    <div class="sl"></div>
+    <div class="stp" id="step2"><div class="sn">2</div>Upload HMB</div>
+    <div class="sl"></div>
+    <div class="stp" id="step3"><div class="sn">3</div>Report</div>
+  </div>
+
+  <!-- PAGE 1 — REGISTER -->
+  <div class="page show" id="pgReg">
+    <div class="card">
+      <div class="card-t">Register to use MethaneScan</div>
+      <div class="card-s">Free and open-source. Your HMB is processed entirely in your browser — never uploaded anywhere. Only anonymised usage statistics (stream counts) are shared to track industry impact.</div>
+      <div class="fg">
+        <div class="field"><label>Full name *</label><input id="f_name" type="text" placeholder="e.g. Ahmed Al-Rashidi"></div>
+        <div class="field"><label>Work email *</label><input id="f_email" type="email" placeholder="you@company.com"></div>
+        <div class="field"><label>Company *</label><input id="f_company" type="text" placeholder="e.g. Qatar Gas Operations"></div>
+        <div class="field"><label>Position *</label><input id="f_position" type="text" placeholder="e.g. Process Engineer"></div>
+        <div class="field"><label>Phone</label><input id="f_phone" type="tel" placeholder="+44 7700 900000"></div>
+        <div class="field"><label>Country *</label><input id="f_country" type="text" placeholder="e.g. United Kingdom"></div>
+      </div>
+    </div>
+
+    <div class="tp">
+      <div class="tp-hdr">
+        <svg width="18" height="18" fill="none" stroke="#0f766e" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <h3>Exactly what data we collect — and what we don't</h3>
+        <span class="tp-hdr-sub">Full transparency</span>
+      </div>
+      <div class="tp-body">
+        <div class="tp-cols">
+          <div>
+            <h4>✓ We DO collect</h4>
+            <div class="tp-item"><span class="td td-y"></span><span><strong>Contact details</strong> — name, email, company, position, phone, country.</span></div>
+            <div class="tp-item"><span class="td td-y"></span><span><strong>Stream counts</strong> — total streams analysed, Very High / High / Medium / Low / Out of Scope counts.</span></div>
+            <div class="tp-item"><span class="td td-y"></span><span><strong>Timestamp and country</strong> — when the analysis was run.</span></div>
+          </div>
+          <div>
+            <h4>✗ We DO NOT collect</h4>
+            <div class="tp-item"><span class="td td-n"></span><span>Stream numbers, names, or descriptions</span></div>
+            <div class="tp-item"><span class="td td-n"></span><span>Pressure, temperature, or composition data</span></div>
+            <div class="tp-item"><span class="td td-n"></span><span>Methane leak rates or calculated values</span></div>
+            <div class="tp-item"><span class="td td-n"></span><span>The HMB file — it never leaves your browser</span></div>
+            <div class="tp-item"><span class="td td-n"></span><span>Plant name, location, or project identifiers</span></div>
+          </div>
+        </div>
+        <div class="tp-note">We publish aggregated, anonymised statistics — e.g. "MethaneScan has helped 300 engineers across 22 countries identify an average 41% of streams as outside LDAR scope." Your contact details may be used to offer related professional services. You may opt out at any time.</div>
+      </div>
+    </div>
+
+    <div class="c-area">
+      <label class="c-row"><input type="checkbox" id="c1"><span><strong>I consent to MethaneScan collecting my contact details and anonymised analysis statistics</strong> as described above. I understand my contact details may be used to offer related professional services and I can opt out at any time.</span></label>
+      <label class="c-row"><input type="checkbox" id="c2"><span><strong>I confirm I am authorised to use the Heat &amp; Mass Balance data I will upload.</strong> I accept full responsibility for its use. I understand the HMB is processed only in my browser and never transmitted to any server.</span></label>
+      <label class="c-row"><input type="checkbox" id="c3"><span><strong>I accept the MIT licence terms.</strong> MethaneScan is provided without warranty. The authors accept no liability for decisions made based on this analysis.</span></label>
+    </div>
+    <div id="regErr" class="al al-e" style="display:none"></div>
+    <div class="btn-row"><button class="btn btn-p" onclick="goUpload()">Continue to Upload &rarr;</button></div>
+  </div>
+
+  <!-- PAGE 2 — UPLOAD -->
+  <div class="page" id="pgUp">
+    <div class="card">
+      <div class="card-t">Upload Heat &amp; Mass Balance</div>
+      <div class="card-s">Accepted: Excel (.xls or .xlsx). Processed locally in your browser. Never sent anywhere.</div>
+
+      <div class="up-area" id="upArea">
+        <div style="font-size:38px;margin-bottom:10px;opacity:.3">&#8679;</div>
+        <h3>Click to select file or drag &amp; drop</h3>
+        <p>Excel HMB &middot; .xls or .xlsx</p>
+        <input type="file" id="fileInput" accept=".xls,.xlsx">
+      </div>
+      <div id="fileAccepted" style="display:none"></div>
+
+      <div class="pnote">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Your file is processed entirely in your browser. No process data is transmitted to any server. After the report is generated, the workbook is overwritten with random bytes and deleted from memory.</span>
+      </div>
+
+      <!-- DIAGNOSTIC PANEL — shows live status during analysis -->
+      <div class="diag" id="diagPanel">
+        <div class="diag-line" id="d1"><span>&#9744;</span><span>Libraries loaded (SheetJS + Chart.js)</span></div>
+        <div class="diag-line" id="d2"><span>&#9744;</span><span>File read successfully</span></div>
+        <div class="diag-line" id="d3"><span>&#9744;</span><span>Workbook parsed — sheets found</span></div>
+        <div class="diag-line" id="d4"><span>&#9744;</span><span>Stream data extracted</span></div>
+        <div class="diag-line" id="d5"><span>&#9744;</span><span>Calculations complete</span></div>
+        <div class="diag-line" id="d6"><span>&#9744;</span><span>Report built</span></div>
+        <div id="diagErr" style="margin-top:8px;color:#b91c1c;font-weight:500"></div>
+      </div>
+
+      <div id="uploadErr" class="al al-e" style="display:none"></div>
+      <div class="prog" id="prog">
+        <div class="pbo"><div class="pbi" id="pbar"></div></div>
+        <div class="plbl" id="plbl">Reading file...</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-o" onclick="goReg()">&#8592; Back</button>
+        <button class="btn btn-p" id="btnGo" disabled onclick="runAnalysis()">Analyse &amp; Generate Report &rarr;</button>
+        <button class="btn btn-o no-print" onclick="toggleDiag()" style="font-size:12px">Show diagnostics</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 3 — REPORT -->
+  <div class="page" id="pgRpt">
+    <div class="rpt-acts no-print">
+      <button class="btn btn-p" onclick="window.print()">&#8595; Print / Save PDF</button>
+      <button class="btn btn-o" onclick="startOver()">&#8592; New Analysis</button>
+      <button class="btn btn-d" onclick="scrambleAndConfirm()">&#128274; Scramble &amp; Clear</button>
+      <span id="telBadge" class="tb"></span>
+    </div>
+    <div id="rptBody"></div>
+  </div>
+
+</div>
+
+<div class="scr-ov" id="scrOv">
+  <div style="font-size:17px;font-weight:600">Scrambling HMB data...</div>
+  <div class="scr-an" id="scrAn">████████████</div>
+  <div style="font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.45)">All process data is being overwritten with random values</div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+var WB = null, AR = null, FM = {};
+
+// ─── DIAGNOSTIC HELPERS ───────────────────────────────────────────────────────
+function diagShow(){ document.getElementById('diagPanel').style.display='block'; }
+function diagSet(id, ok, msg){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.className = 'diag-line ' + (ok ? 'diag-ok' : 'diag-err');
+  el.innerHTML = '<span>' + (ok ? '&#10003;' : '&#10007;') + '</span><span>' + (msg || el.children[1].textContent) + '</span>';
+}
+function diagErr(msg){
+  var el = document.getElementById('diagErr');
+  if(el) el.textContent = 'ERROR: ' + msg;
+  diagShow();
+}
+function toggleDiag(){
+  var p = document.getElementById('diagPanel');
+  p.style.display = p.style.display === 'none' || !p.style.display ? 'block' : 'none';
+}
+
+// ─── CHECK LIBRARIES ─────────────────────────────────────────────────────────
+window.addEventListener('load', function(){
+  var xlOk = typeof XLSX !== 'undefined';
+  var chOk = typeof Chart !== 'undefined';
+  if(!xlOk || !chOk){
+    diagShow();
+    diagSet('d1', false, 'Library load FAILED — SheetJS:' + xlOk + ' Chart.js:' + chOk + '. Check internet connection.');
+    var err = document.getElementById('uploadErr');
+    if(err){ err.textContent = 'Required libraries failed to load. Please check your internet connection and reload the page.'; err.style.display='block'; }
+  } else {
+    diagSet('d1', true, 'Libraries loaded — SheetJS ' + XLSX.version + ', Chart.js ready');
+  }
+
+  // File input listener
+  var fi = document.getElementById('fileInput');
+  if(fi) fi.addEventListener('change', function(e){ handleFile(e.target.files[0]); });
+
+  // Drag and drop
+  var ua = document.getElementById('upArea');
+  if(ua){
+    ua.addEventListener('dragover', function(e){ e.preventDefault(); ua.classList.add('drag'); });
+    ua.addEventListener('dragleave', function(){ ua.classList.remove('drag'); });
+    ua.addEventListener('drop', function(e){
+      e.preventDefault(); ua.classList.remove('drag');
+      if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+  }
+});
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function setStep(n){
+  [1,2,3].forEach(function(i){
+    var el = document.getElementById('step'+i);
+    el.classList.remove('active','done');
+    if(i < n) el.classList.add('done');
+    if(i === n) el.classList.add('active');
+  });
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('show'); });
+  document.getElementById(id).classList.add('show');
+}
+function goReg(){ showPage('pgReg'); setStep(1); }
+function startOver(){
+  scramble(); WB=null; AR=null; FM={};
+  var fi = document.getElementById('fileInput');
+  if(fi) fi.value = '';
+  document.getElementById('fileAccepted').style.display = 'none';
+  document.getElementById('btnGo').disabled = true;
+  showPage('pgReg'); setStep(1);
+}
+
+// ─── REGISTRATION ─────────────────────────────────────────────────────────────
+function goUpload(){
+  var get = function(id){ return document.getElementById(id).value.trim(); };
+  var chk = function(id){ return document.getElementById(id).checked; };
+  var err = document.getElementById('regErr');
+  if(!get('f_name')||!get('f_email')||!get('f_company')||!get('f_position')||!get('f_country')){
+    err.textContent='Please fill in all required fields (name, email, company, position, country).'; err.style.display='block'; return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(get('f_email'))){
+    err.textContent='Please enter a valid email address.'; err.style.display='block'; return;
+  }
+  if(!chk('c1')||!chk('c2')||!chk('c3')){
+    err.textContent='Please accept all three statements to proceed.'; err.style.display='block'; return;
+  }
+  err.style.display='none';
+  showPage('pgUp'); setStep(2);
+}
+
+// ─── FILE HANDLING ────────────────────────────────────────────────────────────
+function handleFile(f){
+  if(!f) return;
+  var errEl = document.getElementById('uploadErr');
+  if(!f.name.match(/\.(xls|xlsx)$/i)){
+    errEl.textContent = 'Please upload an .xls or .xlsx file.'; errEl.style.display='block'; return;
+  }
+  errEl.style.display='none';
+  FM = { name:f.name, size:f.size };
+
+  var acc = document.getElementById('fileAccepted');
+  acc.style.display = 'block';
+  acc.innerHTML = '<div class="fa">'
+    + '<svg width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>'
+    + '<span class="fa-name">'+f.name+'</span>'
+    + '<span class="fa-size">'+(f.size/1024).toFixed(1)+' KB</span>'
+    + '</div>';
+
+  diagSet('d2', true, 'File selected: ' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)');
+
+  var reader = new FileReader();
+  reader.onerror = function(){
+    diagSet('d2', false, 'FileReader error — browser may have blocked local file access');
+    errEl.textContent = 'Could not read the file. If using a local file, try a different browser (Chrome or Edge recommended).';
+    errEl.style.display = 'block';
+  };
+  reader.onload = function(ev){
+    try{
+      if(typeof XLSX === 'undefined') throw new Error('SheetJS library not loaded');
+      WB = XLSX.read(ev.target.result, { type:'array' });
+      diagSet('d3', true, 'Workbook parsed — sheets: ' + WB.SheetNames.join(', '));
+      document.getElementById('btnGo').disabled = false;
+    } catch(e){
+      diagSet('d3', false, 'Parse error: ' + e.message);
+      errEl.textContent = 'Could not parse this file: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+// ─── PARSE NUMBER ─────────────────────────────────────────────────────────────
+function toNum(v){
+  var f = parseFloat(v);
+  return isNaN(f) ? NaN : f;
+}
+
+// ─── CALCULATION ─────────────────────────────────────────────────────────────
+function calcCH4(T_C, P_bar, vfrac, y_CH4, mwv, mwt, Zv, rho){
+  var Cd=0.62, A=1e-6, R=8.314, Patm=101325, g=1.3;
+  var TK = T_C + 273.15;
+  var PP = P_bar * 1e5;
+  if(isNaN(TK)||isNaN(PP)||PP<=0) return 0;
+  if(isNaN(vfrac)) vfrac = 0;
+  var Mm = (isNaN(mwv)||mwv<1 ? (isNaN(mwt)||mwt<1 ? 20 : mwt) : mwv) / 1000;
+  var Zval = (isNaN(Zv)||Zv<=0||Zv>2) ? 1 : Zv;
+  var rhoL = (isNaN(rho)||rho<1) ? 700 : rho;
+  var MWt  = (isNaN(mwt)||mwt<1) ? 20 : mwt;
+  var y    = isNaN(y_CH4) ? 0 : Math.max(0, Math.min(1, y_CH4));
+  // gas flow
+  var crit = Math.pow((g+1)/2, g/(g-1));
+  var mg = 0;
+  if(PP/Patm >= crit){
+    var t = Math.pow(2/(g+1), (g+1)/(g-1));
+    mg = Cd * A * PP * Math.sqrt(g * Mm / (Zval * R * TK) * t);
+  } else {
+    var br = Patm/PP;
+    var t2 = (2*g/(g-1)) * (Mm/(Zval*R*TK)) * (br*br - Math.pow(br,(g+1)/g));
+    if(t2 > 0) mg = Cd * A * PP * Math.sqrt(t2);
+  }
+  // liquid flow
+  var dP = Math.max(0, PP - Patm);
+  var ml = dP > 0 ? Cd * A * Math.sqrt(2 * rhoL * dP) : 0;
+  // methane mass
+  var ch4_gas = mg * (y * 16 / (Mm * 1000));
+  var ch4_liq = ml * (y * 16 / MWt);
+  return (vfrac * ch4_gas + (1 - vfrac) * ch4_liq) * 1000; // g/s
+}
+
+// ─── ANALYSIS ────────────────────────────────────────────────────────────────
+function runAnalysis(){
+  if(!WB){ alert('No file loaded. Please upload an HMB file first.'); return; }
+
+  var prog = document.getElementById('prog');
+  var bar  = document.getElementById('pbar');
+  var lbl  = document.getElementById('plbl');
+  var errEl = document.getElementById('uploadErr');
+
+  prog.style.display = 'block';
+  bar.style.width = '8%';
+  lbl.textContent = 'Parsing workbook...';
+  errEl.style.display = 'none';
+  diagShow();
+
+  setTimeout(function(){
+    try{
+      var ws = WB.Sheets[WB.SheetNames[0]];
+      var raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      // Row extraction
+      var hdr  = raw[0]  || [];
+      var desc = raw[1]  || [];
+      var vfR  = raw[3]  || [];
+      var tR   = raw[4]  || [];
+      var pR   = raw[5]  || [];
+      var ch4R = raw[11] || [];
+      var mwvR = raw[50] || [];
+      var mwtR = raw[44] || [];
+      var zR   = raw[55] || [];
+      var rhR  = raw[62] || [];
+
+      bar.style.width = '30%'; lbl.textContent = 'Extracting stream data...';
+
+      var results = [];
+      var skipped = 0;
+
+      for(var i = 2; i < hdr.length; i++){
+        var snum = String(hdr[i]||'').trim();
+        if(!snum || snum === 'nan') continue;
+        var T   = toNum(tR[i]);
+        var P   = toNum(pR[i]);
+        var vf  = toNum(vfR[i]);
+        var y   = toNum(ch4R[i]);
+        var mwv = toNum(mwvR[i]);
+        var mwt = toNum(mwtR[i]);
+        var Z   = toNum(zR[i]);
+        var rho = toNum(rhR[i]);
+        if(isNaN(P) || P <= 0){ skipped++; continue; }
+        if(isNaN(T)) T = 20;
+        var gs = calcCH4(T, P, isNaN(vf)?0:vf, isNaN(y)?0:y, mwv, mwt, Z, rho);
+        var ph = (!isNaN(vf) && vf >= 0.99) ? 'Gas' : (!isNaN(vf) && vf <= 0.01) ? 'Liquid' : 'Mixed';
+        results.push({
+          stream: snum,
+          desc:   String(desc[i]||'').trim(),
+          phase:  ph,
+          T:      isNaN(T) ? 0 : T,
+          P:      isNaN(P) ? 0 : P,
+          vf:     isNaN(vf) ? 0 : vf,
+          y_CH4:  isNaN(y) ? 0 : y,
+          ch4_gs: gs
+        });
+      }
+
+      diagSet('d4', true, 'Extracted ' + results.length + ' streams (' + skipped + ' skipped — no pressure data)');
+      bar.style.width = '55%'; lbl.textContent = 'Ranking streams...';
+
+      if(results.length === 0){
+        throw new Error('No streams with valid pressure data found. Check that your HMB follows the expected row layout (row 5 = pressure in bar).');
+      }
+
+      results.sort(function(a,b){ return b.ch4_gs - a.ch4_gs; });
+      var peak = results[0].ch4_gs || 1;
+      results.forEach(function(r){ r.pct = r.ch4_gs / peak * 100; });
+
+      var inScope = results.filter(function(r){ return r.ch4_gs > 0.0001; });
+      var oos     = results.filter(function(r){ return r.ch4_gs <= 0.0001; });
+      var vh      = inScope.filter(function(r){ return r.pct > 55; });
+      var hi      = inScope.filter(function(r){ return r.pct > 25 && r.pct <= 55; });
+      var md      = inScope.filter(function(r){ return r.pct > 10 && r.pct <= 25; });
+      var lo      = inScope.filter(function(r){ return r.pct <= 10; });
+
+      AR = { inScope:inScope, oos:oos, vh:vh, hi:hi, md:md, lo:lo, peak:peak, results:results };
+
+      diagSet('d5', true, 'Calculations done — VH:'+vh.length+' H:'+hi.length+' M:'+md.length+' L:'+lo.length+' OOS:'+oos.length);
+      bar.style.width = '80%'; lbl.textContent = 'Building report...';
+
+      setTimeout(function(){
+        bar.style.width = '95%'; lbl.textContent = 'Scrambling HMB...';
+        scramble();
+
+        buildReport();
+        diagSet('d6', true, 'Report generated successfully');
+        bar.style.width = '100%'; lbl.textContent = 'Done.';
+
+        sendTelemetry({ total:results.length, vh:vh.length, hi:hi.length, md:md.length, lo:lo.length, oos:oos.length });
+        showPage('pgRpt'); setStep(3);
+        setTimeout(function(){ prog.style.display='none'; }, 800);
+      }, 300);
+
+    } catch(e){
+      diagErr(e.message);
+      errEl.textContent = 'Analysis failed: ' + e.message;
+      errEl.style.display = 'block';
+      bar.style.width = '0%';
+      prog.style.display = 'none';
+      console.error('MethaneScan error:', e);
+    }
+  }, 60);
+}
+
+// ─── SCRAMBLE ─────────────────────────────────────────────────────────────────
+function scramble(){
+  if(!WB) return;
+  try{
+    WB.SheetNames.forEach(function(nm){
+      var ws = WB.Sheets[nm];
+      Object.keys(ws).forEach(function(k){
+        if(k[0]==='!') return;
+        ws[k].v = Math.random();
+        ws[k].w = String(Math.random());
+      });
+    });
+  } catch(e){}
+  WB = null;
+}
+function scrambleAndConfirm(){
+  var ov = document.getElementById('scrOv');
+  ov.classList.add('show');
+  var t=0, chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789█▓▒░';
+  var iv = setInterval(function(){
+    document.getElementById('scrAn').textContent = Array(12).fill(0).map(function(){ return chars[Math.floor(Math.random()*chars.length)]; }).join('');
+    if(++t > 22){
+      clearInterval(iv);
+      scramble(); AR = null;
+      setTimeout(function(){ ov.classList.remove('show'); startOver(); }, 400);
+    }
+  }, 80);
+}
+
+// ─── TELEMETRY ─────────────────────────────────────────────────────────────────
+function sendTelemetry(stats){
+  // ── REPLACE THIS URL with your Google Apps Script Web App URL ──
+  // See setup instructions. Until replaced, telemetry silently skips.
+  var ENDPOINT = 'https://script.google.com/macros/s/AKfycbysKwwqTO0VBdpB6dOhzOypS8QurrjUGG8BFB5d4l8_iAIT9zlT01JJCcttqhLQLSfFIA/execAPPS_SCRIPT_URL'
+  if(ENDPOINT.indexOf('YOUR_') === 0){
+    var badge = document.getElementById('telBadge');
+    badge.style.display = 'inline-flex';
+    badge.className = 'tb tb-sk';
+    badge.innerHTML = '<span class="tdot" style="background:#9ca3af"></span>Telemetry endpoint not configured';
+    return;
+  }
+  var get = function(id){ return document.getElementById(id).value.trim(); };
+  var payload = JSON.stringify({
+    name:       get('f_name'),
+    email:      get('f_email'),
+    company:    get('f_company'),
+    position:   get('f_position'),
+    phone:      get('f_phone') || '',
+    country:    get('f_country'),
+    total_streams: stats.total,
+    very_high:  stats.vh,
+    high:       stats.hi,
+    medium:     stats.md,
+    low:        stats.lo,
+    out_of_scope: stats.oos,
+    tool_version: '1.0'
+  });
+  fetch(ENDPOINT, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:payload })
+    .then(function(){
+      var badge = document.getElementById('telBadge');
+      badge.style.display = 'inline-flex';
+      badge.className = 'tb tb-ok';
+      badge.innerHTML = '<span class="tdot" style="background:#0f766e"></span>Usage data recorded — thank you';
+    })
+    .catch(function(){
+      var badge = document.getElementById('telBadge');
+      badge.style.display = 'inline-flex';
+      badge.className = 'tb tb-sk';
+      badge.innerHTML = '<span class="tdot" style="background:#9ca3af"></span>Usage data not sent (no connection)';
+    });
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function getUnit(d){
+  d = (d||'').toLowerCase();
+  if(d.includes('sales gas')||d.includes('compression')) return 'Gas compression';
+  if(d.includes('mol sieve')||d.includes('dehy')||d.includes('drier')) return 'Dehydration';
+  if(d.includes('amine')||d.includes('slug')||d.includes('sour')) return 'Inlet / AGR';
+  if(d.includes('de-eth')||d.includes('deethan')||d.includes('reflux')) return 'De-ethaniser';
+  if(d.includes('low temp')||d.includes('expander')||d.includes('jt ')) return 'Cold sep.';
+  if(d.includes('flash')) return 'Flash gas';
+  if(d.includes('oil')||d.includes('crude')||d.includes('stab')) return 'Oil train';
+  if(d.includes('lpg')||d.includes('c3')||d.includes('c4')) return 'LPG system';
+  if(d.includes('water')) return 'Utility';
+  return 'Process';
+}
+function getTrain(d){
+  d = (d||'').toLowerCase();
+  if(d.includes('train 1')) return 'Train 1';
+  if(d.includes('train 2')) return 'Train 2';
+  if(d.includes('train 3')) return 'Train 3';
+  if(d.includes('train 4')) return 'Train 4';
+  return 'All trains';
+}
+function phPill(ph){
+  var c={Gas:['#dcfce7','#14532d'],Liquid:['#dbeafe','#1e40af'],Mixed:['#fef9c3','#713f12']};
+  var arr = c[ph]||c.Mixed;
+  return '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:'+arr[0]+';color:'+arr[1]+'">'+ph+'</span>';
+}
+
+// ─── TIER BUILDER ─────────────────────────────────────────────────────────────
+var TIERS = {
+  vh:{ cls:'vh', lbl:'Very High Priority', rng:'>55% of peak',
+    ins:'These streams combine the highest operating pressures with high methane mole fractions. A 1 mm² flange leak here releases more methane than anywhere else on the plant. <strong>Design actions:</strong> ring-joint or spiral-wound gaskets; butt-weld preference; continuous fixed sensors; include in every survey cycle; fugitive check at pre-commissioning.'},
+  hi:{ cls:'hi', lbl:'High Priority', rng:'25–55% of peak',
+    ins:'High-pressure streams carrying the main process composition before separation. Liquid streams in this tier flash violently on release. H₂S co-presence on sour sections requires H₂S detection co-located with methane sensors. <strong>Actions:</strong> quarterly OGI surveys minimum; butt-weld preference on sour piping.'},
+  md:{ cls:'md', lbl:'Medium Priority', rng:'10–25% of peak',
+    ins:'Sour gas inlet section, intermediate compression stages, de-ethaniser, and flash gas compression. Many streams appear across multiple trains — total flange count is high. <strong>Actions:</strong> bi-annual OGI; prioritise compression seals and valve packings; H₂S detection on sour streams.'},
+  lo:{ cls:'lo', lbl:'Low Priority', rng:'<10% of peak',
+    ins:'Low-pressure de-ethaniser internals, recompression suction, and flash gas suction stages. Remain within LDAR scope but warrant annual inspection or opportunistic surveys during shutdowns. <strong>Actions:</strong> annual OGI; inspection during planned maintenance; no continuous monitoring required.'}
+};
+function buildTier(arr, key){
+  var t = TIERS[key];
+  var rows = arr.length ? arr.map(function(r){
+    return '<tr>'
+      +'<td><span class="sp">'+r.stream+'</span></td>'
+      +'<td style="font-size:12px">'+((r.desc||'').substring(0,60)||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--ink3)">'+getUnit(r.desc)+'</td>'
+      +'<td style="font-size:11px;color:var(--ink3)">'+getTrain(r.desc)+'</td>'
+      +'<td>'+phPill(r.phase)+'</td>'
+      +'<td style="font-family:var(--mono);font-size:11px">'+r.P.toFixed(1)+'</td>'
+      +'<td style="font-family:var(--mono);font-size:11px">'+r.T.toFixed(1)+'</td>'
+      +'</tr>';
+  }).join('') : '<tr><td colspan="7" style="color:#9ca3af;font-style:italic;padding:12px 10px">No streams in this tier.</td></tr>';
+  return '<div class="ts '+t.cls+'">'
+    +'<div class="th2"><h2>'+t.lbl+'</h2><span style="font-size:11px;opacity:.6">'+t.rng+'</span><span class="tc2">'+arr.length+' stream'+(arr.length!==1?'s':'')+'</span></div>'
+    +'<div class="ti">'+t.ins+'</div>'
+    +'<table class="tt"><thead><tr>'
+    +'<th style="width:68px">Stream</th><th>Description</th><th style="width:110px">Unit</th>'
+    +'<th style="width:82px">Train</th><th style="width:58px">Phase</th>'
+    +'<th style="width:58px">P bar</th><th style="width:58px">T °C</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'</div>';
+}
+function buildOos(oos){
+  var grp = {};
+  oos.forEach(function(r){ var u=getUnit(r.desc); if(!grp[u])grp[u]=[]; grp[u].push(r.stream); });
+  var cards = Object.entries(grp).map(function(kv){
+    return '<div class="oos-grp"><div class="oos-gt">'+kv[0]+'</div><div class="oos-tags">'
+      +kv[1].map(function(s){ return '<span class="oos-tag">'+s+'</span>'; }).join('')
+      +'</div></div>';
+  }).join('');
+  return '<div class="oos-s">'
+    +'<div class="oos-h"><h2>Out of Scope — LDAR Excluded</h2><span style="font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)">'+oos.length+' streams &middot; zero methane</span></div>'
+    +'<div class="oos-b">'
+    +'<div class="oos-ins">These streams contain no methane at operating conditions — treated oil, LPG products, stabiliser bottoms, naphtha splitter streams, and water/utility streams. <strong>Formal exclusion from LDAR scope is justified by design-basis data</strong> and should be documented in the Fugitive Emissions Management Plan. These streams may carry VOC or H₂S requiring separate inspection under process safety or air quality frameworks.</div>'
+    +'<div class="oos-g">'+cards+'</div>'
+    +'<div style="margin-top:10px;font-size:12px;color:var(--ink3);background:var(--gray-bg);border:1px solid var(--gray-bd);border-radius:var(--r);padding:9px 13px">Excluding these '+oos.length+' streams eliminates an estimated <strong>'+Math.round(oos.length*0.5)+'&ndash;'+oos.length+' inspection-days per survey cycle</strong> with zero emissions penalty.</div>'
+    +'</div></div>';
+}
+
+// ─── REPORT ───────────────────────────────────────────────────────────────────
+function buildReport(){
+  var r = AR;
+  var get = function(id){ return document.getElementById(id).value.trim(); };
+  var now = new Date();
+  var ds = now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var ts = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  var sorted = r.inScope.slice().sort(function(a,b){ return b.ch4_gs-a.ch4_gs; });
+  var peak = sorted[0] ? sorted[0].ch4_gs : 1;
+
+  var html = '<div>'
+    +'<div class="rpt-hdr">'
+    +'<div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start">'
+    +'<div><div style="font-size:10px;font-family:var(--mono);opacity:.38;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">MethaneScan v1.0 &middot; Open Source LDAR Priority Tool &middot; MIT Licence</div>'
+    +'<h1>Methane Potential Assessment<br>LDAR Priority Register</h1></div>'
+    +'<div style="font-family:var(--mono);font-size:11px;opacity:.38;text-align:right;line-height:1.9">Generated '+ds+' at '+ts+'<br>File: '+(FM.name||'HMB')+'<br>'+(FM.size?((FM.size/1024).toFixed(0)+' KB'):'')+'</div>'
+    +'</div>'
+    +'<div class="rpt-meta">'
+    +'<div class="rmi"><span>Prepared by</span><strong>'+get('f_name')+'</strong></div>'
+    +'<div class="rmi"><span>Organisation</span><strong>'+get('f_company')+'</strong></div>'
+    +'<div class="rmi"><span>Position</span><strong>'+get('f_position')+'</strong></div>'
+    +'<div class="rmi"><span>Email</span><strong>'+get('f_email')+'</strong></div>'
+    +(get('f_phone')?'<div class="rmi"><span>Phone</span><strong>'+get('f_phone')+'</strong></div>':'')
+    +'<div class="rmi"><span>Country</span><strong>'+get('f_country')+'</strong></div>'
+    +'</div></div>'
+
+    +'<div style="margin-top:18px">'
+    +'<div class="sg">'
+    +'<div class="sc" style="background:var(--red-bg);border-color:var(--red-bd);color:var(--red)"><div class="n">'+r.vh.length+'</div><div class="l">Very High</div></div>'
+    +'<div class="sc" style="background:var(--amb-bg);border-color:var(--amb-bd);color:var(--amb)"><div class="n">'+r.hi.length+'</div><div class="l">High</div></div>'
+    +'<div class="sc" style="background:var(--blu-bg);border-color:var(--blu-bd);color:var(--blu)"><div class="n">'+r.md.length+'</div><div class="l">Medium</div></div>'
+    +'<div class="sc" style="background:var(--grn-bg);border-color:var(--grn-bd);color:var(--grn)"><div class="n">'+r.lo.length+'</div><div class="l">Low</div></div>'
+    +'<div class="sc" style="background:var(--gray-bg);border-color:var(--gray-bd);color:var(--gray)"><div class="n">'+r.oos.length+'</div><div class="l">Out of scope</div></div>'
+    +'</div>'
+    +'<div style="font-size:13px;color:var(--ink2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">'
+    +'<span><strong style="font-family:var(--mono)">'+r.inScope.length+'</strong> streams in LDAR scope</span>'
+    +'<span style="color:var(--border2)">&middot;</span>'
+    +'<span><strong style="font-family:var(--mono)">'+r.oos.length+'</strong> streams excluded (zero methane)</span>'
+    +'<span style="color:var(--border2)">&middot;</span>'
+    +'<span><strong style="font-family:var(--mono)">'+r.results.length+'</strong> total streams analysed</span>'
+    +'</div></div>'
+
+    +'<div class="cw">'
+    +'<div class="cleg">'
+    +'<span><span class="ld" style="background:#b91c1c"></span>Very High</span>'
+    +'<span><span class="ld" style="background:#92400e"></span>High</span>'
+    +'<span><span class="ld" style="background:#1e40af"></span>Medium</span>'
+    +'<span><span class="ld" style="background:#14532d"></span>Low</span>'
+    +'<span style="margin-left:auto;font-size:11px;color:var(--ink3)">Bar length = relative methane potential. Exact values not shown.</span>'
+    +'</div>'
+    +'<div style="position:relative;width:100%;height:'+Math.max(280,sorted.length*25+60)+'px">'
+    +'<canvas id="rptC" role="img" aria-label="Horizontal bar chart ranking in-scope streams by relative methane potential, colour-coded by LDAR priority tier">Streams ranked from highest to lowest methane potential.</canvas>'
+    +'</div></div>'
+
+    + buildTier(r.vh,'vh')
+    + buildTier(r.hi,'hi')
+    + buildTier(r.md,'md')
+    + buildTier(r.lo,'lo')
+    + buildOos(r.oos)
+
+    +'<div class="mb-box" style="margin-top:18px"><h4>Methodology</h4>'
+    +'Equivalent methane leak rate for an assumed 1 mm² orifice per stream using choked-flow equations (gas) and Bernoulli (liquid). Mixed-phase streams blend by vapour fraction. Methane mass fraction = y_CH4 &times; 16 / MW. Tiers: Very High &gt;55%, High 25&ndash;55%, Medium 10&ndash;25%, Low &lt;10% of peak stream potential. Streams below 0.1% relative potential excluded from LDAR scope. Constants: Cd = 0.62 &middot; A = 1 mm² &middot; &gamma; = 1.3 &middot; R = 8.314 J/mol&middot;K.'
+    +'</div>'
+
+    +'<div class="rpt-foot">'
+    +'<div style="max-width:520px;line-height:1.6"><strong>Disclaimer:</strong> Generated from design-basis data using simplified engineering calculations to support LDAR prioritisation. Does not replace detailed engineering studies, regulatory compliance surveys, or safety assessments. HMB data permanently deleted from browser memory. MethaneScan is open-source software (MIT Licence) provided without warranty.</div>'
+    +'<div style="font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right;line-height:2">MethaneScan v1.0<br>Open Source &middot; MIT Licence</div>'
+    +'</div></div>';
+
+  document.getElementById('rptBody').innerHTML = html;
+
+  // Chart
+  var vals = sorted.map(function(s){ return s.ch4_gs / peak * 100; });
+  function tc(p){ return p>55?'#b91c1c':p>25?'#92400e':p>10?'#1e40af':'#14532d'; }
+  setTimeout(function(){
+    var canvas = document.getElementById('rptC');
+    if(!canvas) return;
+    new Chart(canvas, {
+      type:'bar',
+      data:{
+        labels: sorted.map(function(s){ return s.stream; }),
+        datasets:[{
+          label:'Relative methane potential',
+          data: vals,
+          backgroundColor: vals.map(tc),
+          borderColor: vals.map(tc),
+          borderWidth:0.5, borderRadius:3, barThickness:18
+        }]
+      },
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:function(c){ return 'Stream '+c[0].label; },
+              label:function(c){
+                var s = sorted[c.dataIndex];
+                var p = c.raw.toFixed(0);
+                var t = p>55?'Very High':p>25?'High':p>10?'Medium':'Low';
+                return [s.desc, getUnit(s.desc), 'Priority: '+t];
+              }
+            },
+            backgroundColor:'#fff',titleColor:'#0e1117',bodyColor:'#6b7280',
+            borderColor:'rgba(0,0,0,.1)',borderWidth:1,padding:10
+          }
+        },
+        scales:{
+          x:{
+            grid:{color:'rgba(0,0,0,.06)'},
+            ticks:{color:'#9ca3af',font:{size:10},
+              callback:function(v){ return v===0?'0':v===100?'Peak':''; },
+              autoSkip:false},
+            min:0,max:105,border:{dash:[3,3]}
+          },
+          y:{grid:{display:false},ticks:{color:'#374151',font:{size:10,weight:'500'}}}
+        },
+        layout:{padding:{right:10}}
+      }
+    });
+  }, 200);
+}
+</script>
+</body>
+</html>
